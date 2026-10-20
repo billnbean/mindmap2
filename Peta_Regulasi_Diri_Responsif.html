@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Peta Regulasi Diri</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Versi responsif (fluid): tanpa lebar/tinggi piksel tetap dan tanpa skala JavaScript.
+   Lebar >= sekitar 31rem : peta mendatar 4 kolom (kolom memakai satuan fr, tinggi baris mengikuti lebar kontainer).
+   Lebar lebih kecil      : peta tersusun vertikal bertingkat, penjelasan muncul tepat di bawah konsep yang diklik. */
+:root{
+  --bg:#eef2f4; --surface:#ffffff; --fg:#14262e; --muted:#566a73; --line:#b6c4ca;
+  --c1:#0f766e; --c1s:#d6efec;
+  --c2:#b45309; --c2s:#fbe9d0;
+  --c3:#7c3a9e; --c3s:#eddff6;
+  --root:#14262e; --rootfg:#ffffff;
+  --font-d:"Bricolage Grotesque","Trebuchet MS",sans-serif;
+  --font-b:"Source Sans 3","Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1a20; --surface:#16262e; --fg:#e6eef1; --muted:#9bb0b8; --line:#3a505a;
+  --c1:#4fd1c5; --c1s:#12403c; --c2:#f6ad55; --c2s:#4a3014; --c3:#d6a8f0; --c3s:#3c2450;
+  --root:#e6eef1; --rootfg:#0e1a20; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1a20; --surface:#16262e; --fg:#e6eef1; --muted:#9bb0b8; --line:#3a505a;
+  --c1:#4fd1c5; --c1s:#12403c; --c2:#f6ad55; --c2s:#4a3014; --c3:#d6a8f0; --c3s:#3c2450;
+  --root:#e6eef1; --rootfg:#0e1a20; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-b);font-size:1rem;line-height:1.4}
+.wrap{container-type:inline-size;width:100%;max-width:48rem;margin:0 auto;
+  padding:.6rem max(.6rem,env(safe-area-inset-right,0px)) .8rem max(.6rem,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:.6rem}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:.5rem .8rem;flex-wrap:wrap}
+header>div:first-child{min-width:0;flex:1 1 14rem}
+h1{font-family:var(--font-d);font-size:1.15rem;line-height:1.15;margin:0}
+.sub{color:var(--muted);margin:.15rem 0 0;font-size:.85rem}
+.prog{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:.4rem}
+.bar{width:4.5rem;height:.35rem;border-radius:.2rem;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--c1);transition:width .3s}
+.mapbox{background:var(--surface);border-radius:.7rem;padding:.55rem;border:1px solid var(--line);min-width:0}
+
+/* ===== PETA ===== */
+#map{position:relative;width:100%;display:grid;
+  grid-template-columns:1.15fr 1fr 1.6fr 1.2fr;column-gap:2.2%;
+  --row-h:3.2rem;grid-auto-rows:calc(var(--row-h)/10)}
+@supports (width:1cqw){#map{--row-h:max(2.9rem,7.2cqw)}}
+#map>svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#map path{fill:none;stroke:var(--line);stroke-width:1.5;transition:stroke .2s}
+#map path.on{stroke-width:2.5}
+.node{font-family:var(--font-d);font-weight:500;font-size:.78rem;line-height:1.15;text-align:left;
+  display:flex;align-items:center;gap:.3rem;padding:.2rem .45rem;border-radius:.45rem;
+  border:1.5px solid var(--col);background:var(--soft);color:var(--fg);cursor:pointer;min-width:0;
+  transition:transform .15s,background .15s,color .15s;position:relative}
+@supports (width:1cqw){.node{font-size:clamp(.72rem,2cqw,.9rem)}}
+.node>span:last-child{min-width:0;overflow-wrap:anywhere}
+.node:hover{transform:translateY(-1px)}
+.node:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+.node .dot{flex:none;width:.45rem;height:.45rem;border-radius:50%;border:1.5px solid var(--col);background:transparent}
+.node.seen .dot{background:var(--col)}
+.node.active{background:var(--col);color:var(--surface)}
+.node.active .dot{background:var(--surface);border-color:var(--surface)}
+.node small{display:block;font-family:var(--font-b);font-weight:400;font-size:.82em;opacity:.85}
+.node.root{cursor:default;background:var(--root);color:var(--rootfg);border-color:var(--root);font-weight:700;justify-content:center;text-align:center;transform:none}
+.node.group{cursor:default;transform:none;background:var(--col);color:var(--surface);border-color:var(--col);font-weight:700;letter-spacing:.02em;justify-content:center;text-align:center}
+
+/* ===== PANEL PENJELASAN ===== */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:.7rem;padding:.65rem .8rem;min-height:7rem;border-left:.4rem solid var(--col,var(--line));min-width:0}
+.tag{font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--col,var(--muted))}
+.panel h2{font-family:var(--font-d);font-size:1.05rem;margin:.1rem 0 .3rem;line-height:1.2}
+.panel p{margin:0;font-size:.9rem}
+.ex{margin-top:.5rem;padding:.4rem .65rem;border-radius:.4rem;background:var(--soft,var(--bg));font-size:.88rem}
+.ex b{display:block;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--col)}
+.hint{color:var(--muted)}
+
+/* ===== MODE VERTIKAL (layar sempit): daftar bertingkat ===== */
+#map.v{display:flex;flex-direction:column;gap:.35rem}
+#map.v>svg{display:none}
+#map.v .node{grid-area:auto;min-height:2.5rem;font-size:.9rem;margin-left:calc(var(--d,0) * .9rem)}
+#map.v .node.root,#map.v .node.group{margin-left:0;justify-content:flex-start;text-align:left}
+#map.v .node.root{font-size:.95rem}
+#map.v .node.in::before{content:"";position:absolute;left:-.62rem;top:-.4rem;width:.45rem;height:calc(50% + .4rem);
+  border-left:1.5px solid var(--line);border-bottom:1.5px solid var(--line);border-bottom-left-radius:.35rem}
+#map.v .panel{margin-left:calc(var(--d,0) * .9rem);min-height:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Peta Regulasi Diri Pendidik PNF</h1>
+      <p class="sub">Klik setiap konsep untuk membaca penjelasan dan contohnya.</p>
+    </div>
+    <div class="prog"><span id="pt">0 dari 11 dibuka</span><span class="bar"><i id="pb"></i></span></div>
+  </header>
+  <div class="mapbox" id="mapbox"><div id="map" role="group" aria-label="Peta konsep regulasi diri"></div></div>
+  <section class="panel" id="panel" aria-live="polite"></section>
+</div>
+
+<script>
+var G={
+ p:{n:"Pondasi",c:"c1"}, i:{n:"Implementasi",c:"c2"}, h:{n:"Hubungan untuk Belajar",c:"c3"}
+};
+var TREE={label:"Regulasi Diri Pendidik PNF",root:true,kids:[
+ {group:"p",label:"Pondasi",kids:[
+  {id:"rd",label:"Regulasi Diri",sub:"Baumeister",
+   t:"Regulasi diri adalah kemampuan mengatur pikiran, perasaan, dan tindakan agar sesuai tujuan. Ada empat komponen yang saling menopang: Standar, Motivasi, Pemantauan, dan Energi Mental.",
+   kids:[
+    {id:"st",label:"Standar",t:"Tujuan atau patokan yang ingin dicapai. Tanpa standar yang jelas, kita tidak tahu kapan harus mengoreksi diri.",
+     ex:"\"Saya menyapa murid yang terlambat dengan hangat, bukan menegur di depan kelas.\""},
+    {id:"mo",label:"Motivasi",t:"Dorongan untuk tetap berusaha memenuhi standar, terutama saat lelah atau kecewa.",
+     ex:"Mengingat kembali alasan Anda menjadi pendidik PNF sebelum bereaksi."},
+    {id:"pm",label:"Pemantauan",t:"Kesadaran terhadap pikiran, emosi, dan tindakan diri sendiri ketika sedang berlangsung.",
+     ex:"Menyadari nada suara mulai meninggi, lalu berhenti sejenak dan menurunkannya."},
+    {id:"em",label:"Energi Mental",t:"Tenaga psikologis yang menopang tiga komponen lainnya. Energi ini bisa menipis setelah lama menahan diri dan mengambil banyak keputusan.",
+     ex:"Menjadwalkan jeda singkat di antara dua kelompok belajar.",
+     kids:[{id:"km",below:true,label:"Kelelahan Mental",t:"Kondisi ketika kapasitas psikologis terkuras, misalnya setelah berinteraksi intens dengan murid yang beragam usia dan latar belakang. Tanda: mudah tersinggung, sulit fokus, kehilangan semangat."}]}
+   ]}
+ ]},
+ {group:"i",label:"Implementasi",kids:[
+  {id:"srl",label:"Self-Regulated Learning",sub:"Zimmerman",
+   t:"Siklus belajar mandiri yang berulang melalui tiga tahap: Perencanaan, Pemantauan, dan Refleksi. Pendidik menjalaninya untuk dirinya sendiri, lalu membimbing murid melakukannya.",
+   kids:[
+    {id:"pr",label:"Perencanaan",t:"Menganalisis tugas dan menetapkan target yang realistis sebelum belajar atau mengajar dimulai.",
+     ex:"\"Hari ini cukup satu kompetensi, dengan 20 menit pertama untuk kegiatan ringan.\""},
+    {id:"pm2",label:"Pemantauan",t:"Mengawasi apakah strategi berjalan, secara langsung di lingkungan belajar yang dinamis.",
+     ex:"Melihat banyak yang mulai lelah, lalu mengganti diskusi panjang dengan kerja kelompok."},
+    {id:"rf",label:"Refleksi",t:"Mengevaluasi secara mendalam efektivitas metode yang dipakai, lalu memperbaikinya untuk pertemuan berikutnya.",
+     ex:"Menulis catatan singkat: apa yang berhasil, apa yang diubah."}
+   ]}
+ ]},
+ {group:"h",label:"Hubungan untuk Belajar",kids:[
+  {id:"rl",label:"Hubungan untuk Belajar",sub:"Relationship to Learn",
+   t:"Fondasi rasa aman bagi murid untuk berani belajar mandiri. Hubungan yang harmonis dibangun dari sikap menghargai, mendengar, dan memanfaatkan potensi lokal yang dekat dengan kehidupan mereka."}
+ ]}
+]};
+
+/* Satuan tata letak: 1 baris = 10 sub-baris grid. Tinggi nyata ditentukan CSS (--row-h), bukan angka piksel di sini. */
+var U=10, SPAN=9, SPAN_BIG=14;
+var BREAK_REM=31; /* peta mendatar bila lebar kotak peta >= 31rem; di bawah itu vertikal */
+var map=document.getElementById("map"), mapbox=document.getElementById("mapbox"), panel=document.getElementById("panel");
+var seen={}, total=0, nodes=[], links=[], activeNode=null, vertical=false, ord=0;
+
+function layout(n,depth,grp,state){
+  n.depth=depth; n.grp=grp||n.group;
+  var all=n.kids||[], normal=all.filter(function(k){return !k.below}), below=all.filter(function(k){return k.below});
+  if(!normal.length){n.row=state.r++;}
+  else{normal.forEach(function(k){layout(k,depth+1,n.grp,state)});
+    n.row=(normal[0].row+normal[normal.length-1].row)/2;}
+  if(below.length) state.r+=0.3;
+  below.forEach(function(k){layout(k,depth,n.grp,state)});
+  nodes.push(n);
+  all.forEach(function(k){k.parent=n; links.push([n,k]);});
+}
+function preorder(n,vd){ n.ord=ord++; n.vd=vd; (n.kids||[]).forEach(function(k){preorder(k,k.below?vd+1:Math.max(0,k.depth-1))}); }
+var ST={r:0};
+layout(TREE,0,null,ST);
+preorder(TREE,0);
+nodes.forEach(function(n){if(n.id)total++;});
+
+var svgNS="http://www.w3.org/2000/svg", svg=document.createElementNS(svgNS,"svg");
+map.appendChild(svg);
+links.forEach(function(l){
+  var p=document.createElementNS(svgNS,"path"); l[1].path=p; svg.appendChild(p);
+});
+
+nodes.forEach(function(n){
+  var big=n.root||n.group, span=big?SPAN_BIG:SPAN;
+  var el=document.createElement(n.id?"button":"div");
+  el.className="node"+(n.root?" root":n.group?" group":"")+(n.vd>=1?" in":"");
+  el.style.gridColumn=(n.depth+1);
+  el.style.gridRow=(Math.round(n.row*U+(U-1)/2-span/2)+1)+" / span "+span;
+  el.style.order=n.ord*2;
+  el.style.setProperty("--d",n.vd);
+  if(n.grp){var c=G[n.grp].c; el.style.setProperty("--col","var(--"+c+")"); el.style.setProperty("--soft","var(--"+c+"s)");}
+  if(n.id){
+    el.type="button";
+    el.innerHTML='<span class="dot"></span><span></span>';
+    var s=el.lastChild; s.textContent=n.label;
+    if(n.sub){var sm=document.createElement("small"); sm.textContent=n.sub; s.appendChild(sm);}
+    el.addEventListener("click",function(){open(n,true)});
+  }else{
+    el.textContent=n.label;
+    if(n.root) el.setAttribute("role","presentation");
+  }
+  n.el=el; map.appendChild(el);
+});
+
+/* Garis penghubung dihitung dari posisi nyata elemen, jadi ikut berubah saat ukuran berubah. */
+function drawLinks(){
+  if(vertical) return;
+  var w=map.clientWidth, h=map.clientHeight;
+  svg.setAttribute("viewBox","0 0 "+w+" "+h);
+  links.forEach(function(l){
+    var a=l[0].el, b=l[1].el, p=l[1].path, d;
+    if(l[1].below){
+      var cx=a.offsetLeft+a.offsetWidth/2, ay=a.offsetTop+a.offsetHeight+1, by=b.offsetTop-1;
+      d="M"+cx+" "+ay+" L"+cx+" "+by+" M"+(cx-4)+" "+(by-6)+" L"+cx+" "+by+" L"+(cx+4)+" "+(by-6);
+      p.style.strokeLinejoin="round"; p.style.strokeLinecap="round";
+    }else{
+      var x1=a.offsetLeft+a.offsetWidth, y1=a.offsetTop+a.offsetHeight/2, x2=b.offsetLeft, y2=b.offsetTop+b.offsetHeight/2, mx=(x1+x2)/2;
+      d="M"+x1+" "+y1+" C"+mx+" "+y1+" "+mx+" "+y2+" "+x2+" "+y2;
+    }
+    p.setAttribute("d",d);
+  });
+}
+
+function color(n){return G[n.grp].c}
+function placePanel(){
+  if(vertical){
+    map.appendChild(panel);
+    panel.style.order=activeNode?activeNode.ord*2+1:-1;
+    panel.style.setProperty("--d",activeNode?activeNode.vd:0);
+  }else{
+    mapbox.insertAdjacentElement("afterend",panel);
+    panel.style.order=""; panel.style.removeProperty("--d");
+  }
+}
+function open(n,scroll){
+  activeNode=n; seen[n.id]=true;
+  nodes.forEach(function(m){
+    if(m.id){
+      m.el.classList.toggle("active",m===n);
+      m.el.setAttribute("aria-pressed",m===n?"true":"false");
+      if(seen[m.id]) m.el.classList.add("seen");
+    }
+    if(m.path){m.path.classList.remove("on");m.path.style.stroke="";}
+  });
+  for(var m=n;m&&m.path;m=m.parent){m.path.classList.add("on");m.path.style.stroke="var(--"+color(n)+")";}
+  var c=color(n);
+  panel.style.setProperty("--col","var(--"+c+")"); panel.style.setProperty("--soft","var(--"+c+"s)");
+  panel.innerHTML="";
+  var tag=document.createElement("div"); tag.className="tag"; tag.textContent=G[n.grp].n+(n.sub?" · "+n.sub:"");
+  var h=document.createElement("h2"); h.textContent=n.label;
+  var p=document.createElement("p"); p.textContent=n.t;
+  panel.append(tag,h,p);
+  if(n.ex){var e=document.createElement("div"); e.className="ex"; var b=document.createElement("b"); b.textContent="Contoh"; var s=document.createElement("span"); s.textContent=n.ex; e.append(b,s); panel.appendChild(e);}
+  var k=Object.keys(seen).length;
+  document.getElementById("pt").textContent=k+" dari "+total+" dibuka";
+  document.getElementById("pb").style.width=(k/total*100)+"%";
+  placePanel();
+  if(scroll){
+    var rm=window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches;
+    panel.scrollIntoView({behavior:rm?"auto":"smooth",block:"nearest"});
+  }
+}
+function intro(){
+  panel.style.removeProperty("--col"); panel.style.removeProperty("--soft");
+  panel.innerHTML='<div class="tag">Mulai</div><h2>Pilih satu konsep</h2><p class="hint">Mulailah dari Regulasi Diri di kolom Pondasi, lalu telusuri Implementasi dan Hubungan untuk Belajar. Titik di dalam kotak terisi setelah konsep dibuka.</p>';
+}
+
+/* Mode tata letak mengikuti lebar kotak peta (diukur dalam rem, bukan piksel tetap). */
+function remPx(){return parseFloat(getComputedStyle(document.documentElement).fontSize)||16}
+function applyMode(){
+  var v=mapbox.clientWidth < BREAK_REM*remPx();
+  if(v!==vertical||!map.hasAttribute("data-ready")){
+    vertical=v; map.classList.toggle("v",v); map.setAttribute("data-ready","1"); placePanel();
+  }
+  drawLinks();
+}
+intro(); applyMode();
+if(window.ResizeObserver) new ResizeObserver(applyMode).observe(mapbox); else window.addEventListener("resize",applyMode);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(applyMode);
+</script>
+</body></html>
